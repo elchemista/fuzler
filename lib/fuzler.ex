@@ -184,5 +184,5 @@ defmodule Fuzler do
 
   # NIF
   @spec nif_similarity_score(String.t(), String.t()) :: float
-  defp nif_similarity_score(_q, _t), do: :erlang.nif_error(:nif_not_loaded)
+  def nif_similarity_score(_q, _t), do: :erlang.nif_error(:nif_not_loaded)
 end
