@@ -94,30 +94,41 @@ defmodule Fuzler do
     )
   end
 
+  @key_count_threshold 999
+
   @doc """
-  Fuzzy full‑text search on keys.
+  Top‐N fuzzy search selecting the scorer based on table size:
+
+    * If the cache has fewer than `@key_count_threshold` entries, uses
+      pure‐Elixir `String.jaro_distance/2`.
+    * Otherwise uses the SIMD‐accelerated `nif_similarity_score/2`.
 
   * `query` – the search string.
-  * `opts`  – `:threshold` (default `0.8`), `:limit` (default `:infinity`),
-    `:scorer` (default `&String.jaro_distance/2`).
+  * `opts`  – `:limit` (default 15).
 
   Returns a list of `{key, value, score}` sorted by descending similarity.
   """
+  @spec text_search(String.t(), keyword(), GenServer.server()) :: [{key, value, float()}]
   def text_search(query, opts \\ [], server \\ __MODULE__)
       when is_binary(query) and is_list(opts) do
     limit = Keyword.get(opts, :limit, 15)
     table = table_name(server)
 
-    :ets.foldl(
-      fn {k, v}, acc ->
-        score = nif_similarity_score(query, to_string(k))
+    # decide scorer based on number of entries
+    count = :ets.info(table, :size)
 
-        if score < 0.10 do
-          acc
-        else
-          # ← two-arity
-          TopHeap.push_top({k, v, score}, acc)
-        end
+    scorer =
+      if count < @key_count_threshold,
+        do: &String.jaro_distance/2,
+        else: &nif_similarity_score/2
+
+    :ets.foldl(
+      fn {k, v}, heap_acc ->
+        score = scorer.(query, to_string(k))
+
+        if score < 0.10,
+          do: heap_acc,
+          else: TopHeap.push_top({k, v, score}, heap_acc)
       end,
       TopHeap.new(limit),
       table
@@ -184,5 +195,5 @@ defmodule Fuzler do
 
   # NIF
   @spec nif_similarity_score(String.t(), String.t()) :: float()
-  def nif_similarity_score(q, t), do: :erlang.nif_error(:nif_not_loaded)
+  def nif_similarity_score(_q, _t), do: :erlang.nif_error(:nif_not_loaded)
 end
