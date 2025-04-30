@@ -183,6 +183,6 @@ defmodule Fuzler do
   end
 
   # NIF
-  @spec nif_similarity_score(String.t(), String.t()) :: float
-  def nif_similarity_score(_q, _t), do: :erlang.nif_error(:nif_not_loaded)
+  @spec nif_similarity_score(String.t(), String.t()) :: float()
+  def nif_similarity_score(q, t), do: :erlang.nif_error(:nif_not_loaded)
 end

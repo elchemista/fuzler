@@ -53,6 +53,7 @@ defmodule Fuzler.MixProject do
       # {:rustler, ">= 0.0.0", optional: true},
       {:credo, "~> 1.6", only: [:dev, :test], runtime: false},
       {:dialyxir, "~> 1.4", only: [:dev, :test], runtime: false},
+      {:benchee, "~> 1.1", only: :dev},
       # {:rustler_precompiled, "~> 0.8"},
       # Documentation Provider
       {:ex_doc, "~> 0.28.3", only: [:dev, :test], optional: true, runtime: false}
