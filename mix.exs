@@ -33,7 +33,7 @@ defmodule Fuzler.MixProject do
   end
 
   defp description() do
-    "Fuzler - ETS cache with fuzzy text search"
+    "Fuzler is a lightweight, reusable cache built on top of an ETS table and wrapped in a `GenServer`, with built-in fuzzy text search powered by a Rust NIF for high-performance similarity scoring."
   end
 
   defp package() do
