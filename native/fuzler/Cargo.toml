@@ -6,7 +6,15 @@ edition = "2021"
 
 [lib]
 name = "fuzler"
+path = "src/lib.rs"
 crate-type = ["cdylib"]
+
+[profile.release]
+codegen-units = 1
+lto = true
+panic = 'abort'
+strip = "debuginfo"
+
 
 [dependencies]
 rustler = "0.36.1"

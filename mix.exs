@@ -49,14 +49,13 @@ defmodule Fuzler.MixProject do
   # Run "mix help deps" to learn about dependencies.
   defp deps do
     [
-      {:rustler, "~> 0.36.1"},
-      # {:rustler, ">= 0.0.0", optional: true},
+      {:rustler, ">= 0.0.0", optional: true},
+      {:rustler_precompiled, "~> 0.8"},
       {:credo, "~> 1.6", only: [:dev, :test], runtime: false},
-      {:dialyxir, "~> 1.4", only: [:dev, :test], runtime: false},
-      {:benchee, "~> 1.1", only: :dev},
-      # {:rustler_precompiled, "~> 0.8"},
+      {:benchee, "~> 1.0", only: :dev},
       # Documentation Provider
-      {:ex_doc, "~> 0.28.3", only: [:dev, :test], optional: true, runtime: false}
+      {:ex_doc, "~> 0.28.3", only: [:dev, :test], optional: true, runtime: false},
+      {:dialyxir, "~> 1.4", only: [:dev, :test], runtime: false}
     ]
   end
 end
