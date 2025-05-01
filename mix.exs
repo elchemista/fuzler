@@ -50,9 +50,9 @@ defmodule Fuzler.MixProject do
   defp deps do
     [
       {:rustler, ">= 0.0.0", optional: true},
+      {:rustler_precompiled, "~> 0.8"},
       {:credo, "~> 1.6", only: [:dev, :test], runtime: false},
       {:dialyxir, "~> 1.4", only: [:dev, :test], runtime: false},
-      {:rustler_precompiled, "~> 0.8"},
       # Documentation Provider
       {:ex_doc, "~> 0.28.3", only: [:dev, :test], optional: true, runtime: false}
     ]

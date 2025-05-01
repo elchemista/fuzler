@@ -1,5 +1,5 @@
 defmodule Fuzler do
-  use Rustler, otp_app: :fuzler, crate: "fuzler"
+  # use Rustler, otp_app: :fuzler, crate: "fuzler"
 
   @moduledoc """
   A lightweight, reusable cache built on an ETS table, wrapped in a `GenServer`.
@@ -28,14 +28,14 @@ defmodule Fuzler do
   @type value :: term()
   @opaque t :: %__MODULE__{table: atom(), loader: (-> Enumerable.t())}
 
-  # version = Mix.Project.config()[:version]
+  version = Mix.Project.config()[:version]
 
-  # use RustlerPrecompiled,
-  #   otp_app: :fuzler,
-  #   crate: "fuzler",
-  #   base_url: "https://github.com/elchemista/fuzler/releases/download/v#{version}",
-  #   force_build: System.get_env("RUSTLER_PRECOMPILATION_EXAMPLE_BUILD") in ["1", "true"],
-  #   version: version
+  use RustlerPrecompiled,
+    otp_app: :fuzler,
+    crate: "fuzler",
+    base_url: "https://github.com/elchemista/fuzler/releases/download/v#{version}",
+    force_build: System.get_env("RUSTLER_PRECOMPILATION_EXAMPLE_BUILD") in ["1", "true"],
+    version: version
 
   # Public API
 
