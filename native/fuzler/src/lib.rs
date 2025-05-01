@@ -1,7 +1,7 @@
 use rustler::{Encoder, Env, NifResult, Term};
 use std::cmp::min;
 use triple_accel::hamming::hamming;
-use triple_accel::levenshtein::levenshtein_simd_k; // ← root import
+use triple_accel::levenshtein::levenshtein_simd_k;
 
 const HAMMING_WINDOW: usize = 2; // lengths considered “equal”
 
