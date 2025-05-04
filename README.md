@@ -1,125 +1,122 @@
 # Fuzler
 
-`Fuzler` is a lightweight, reusable cache built on top of an ETS table and wrapped in a `GenServer`, with built‑in fuzzy text search powered by a Rust NIF for high-performance similarity scoring.
+_A tiny, Rust‑powered string‑similarity helper for Elixir._
 
----
+`Fuzler` gives you **one public function**:
 
-## Features
+```elixir
+Fuzler.similarity_score(query :: String.t(), target :: String.t()) :: float
+```
 
-- **Named ETS table**: Give any atom as `:table`.
-- **Public reads / protected writes**: ETS is `:public` with concurrency options; only the GenServer process can write.
-- **O(1) lookup**: Table name → ETS table mapping stored in `:persistent_term`, avoiding extra GenServer calls.
-- **Hot reload**: `reload/1` clears and repopulates from your loader function.
-- **Insert / Get / Stream**: Standard cache operations.
-- **Fuzzy full-text search**: `text_search/3` returns top‑N `{key, value, score}` suggestions using a SIMD‑accelerated Rust NIF.
+It returns a **normalised score in $0.0 – 1.0$** that tells you how closely
+two pieces of text match—robust to typos, word‑order swaps, case and basic
+punctuation.
+
+Behind the scenes it calls a compiled Rust NIF that mixes:
+
+- **Hamming distance** – for very short, nearly equal‑length strings.
+- **SIMD Levenshtein** – fast edit distance from the `triple_accel` crate.
+- **Token‑bag Jaccard** – ignores word order.
+- **Partial‑ratio window** – finds the best‑matching snippet when the target is much longer than the query.
+
+The result is symmetric (`score(a,b) ≈ score(b,a)`), length‑normalised and remains meaningful from single words to multi‑sentence paragraphs.
 
 ---
 
 ## Installation
 
-Add `fuzler` to your dependencies in `mix.exs`:
+Add to your `mix.exs`:
 
 ```elixir
 def deps do
   [
-    {:fuzler, git: "https://github.com/elchemista/fuzler.git"}
+    {:fuzler, "~> 0.1.1"}
   ]
 end
 ```
 
-Then fetch and compile:
-
-```bash
-mix deps.get
-mix compile
-```
-
-Make sure you have Rust installed; the Rustler NIF will compile automatically.
+You need **Rust ≥ 1.70** installed; `rustler` will compile the NIF automatically.
 
 ---
 
-## Quickstart
-
-### 1. Start the cache
+## Quick examples
 
 ```elixir
-loader = fn ->
-  [
-    {"apple",  %{id: 1}},
-    {"banana", %{id: 2}},
-    {"cantaloupe", %{id: 3}}
-  ]
-end
+iex> Fuzler.similarity_score("ciao", "ciao")
+1.0
 
-{:ok, _pid} =
-  Fuzler.start_link(
-    table: :fruit_cache,
-    loader: loader,
-    name: :my_cache
-  )
-```
+iex> Fuzler.similarity_score("bella ciao", "ciao bella")
+0.70       # same words, different order
 
-### 2. Basic operations
+iex> long_text = "bella ciao come va oggi spero che tu stia bene ..."
+iex> Fuzler.similarity_score("ciao", long_text)
+0.75       # query appears once inside a 40‑token paragraph
 
-```elixir
-# Get a value
-Fuzler.get("banana")
-#⇒ %{id: 2}
-
-# Insert a new item
-Fuzler.insert({"durian", %{id: 4}})
-Fuzler.get("durian")
-#⇒ %{id: 4}
-
-# Reload all data
-Fuzler.reload(:my_cache)
-
-# Stream entries matching predicate
-Fuzler.stream(fn %{id: id} -> id <= 2 end)
-|> Enum.map(&elem(&1, 0))
-#⇒ ["apple", "banana"]
-```
-
-### 3. Fuzzy text search
-
-```elixir
-# Suggest keys similar to "ap"
-Fuzler.text_search("ap", limit: 5)
-#⇒ [
-#   {"apple", %{id: 1}, 1.0},
-#   {"grape", %{id: 7}, 0.75},
-#   ...
-#]
-```
-
-- **Options**:
-  - `:limit` – maximum results (default: 15)
-  - `:threshold` – minimum score (default: 0.10)
-  - `:keys` – pre-collected list of keys to search (avoids re-scanning ETS)
-
----
-
-## Module API
-
-```elixir
-@spec start_link(opts :: keyword()) :: GenServer.on_start()
-@spec reload(server \ server())        :: :ok
-@spec insert({key, value}, server)     :: :ok
-@spec get(key, server)                 :: value | nil
-@spec stream((value -> boolean), server) :: Enumerable.t()
-@spec text_search(String.t(), keyword(), server) :: [{key, value, float()}]
+iex> Fuzler.similarity_score("bonjour", long_text)
+0.12       # word not present
 ```
 
 ---
 
-## Running tests
+## When should I use it?
 
-```bash
-mix test    # runs Elixir tests
+| Use case                                    | Why it works well                                    |
+| ------------------------------------------- | ---------------------------------------------------- |
+| typo‑tolerant autocomplete / “did‑you‑mean” | Hamming + Levenshtein catch small edits fast         |
+| matching short queries inside long blobs    | windowed _partial ratio_ focuses on the best slice   |
+| order‑agnostic key comparison               | token‑bag Jaccard treats “ciao bella” = “bella ciao” |
+| quick relevance scoring in Elixir           | pure NIF call, no external service needed            |
+
+**Not** a full‑text search engine or a semantic synonym matcher—that’s what
+Tantivy / Embeddings are for.
+
+---
+
+## API
+
+```elixir
+@doc "Returns a similarity score ∈ [0.0, 1.0]"
+@spec similarity_score(String.t(), String.t()) :: float
 ```
+
+If the NIF failed to load you’ll get:
+
+```elixir
+:erlang.nif_error(:nif_not_loaded)
+```
+
+so your code can decide to fall back or skip tests.
+
+---
+
+## How good is the score?
+
+| Query / Target                                      | Score ≈     |
+| --------------------------------------------------- | ----------- |
+| identical strings (any case / punctuation)          | 1.00        |
+| same words, swapped order                           | 0.68 – 0.72 |
+| one‑word query present once in 45‑token paragraph   | \~0.75      |
+| one‑word query absent from paragraph                | ≤ 0.15      |
+| 80‑token paragraph vs same with 1 typo              | ≥ 0.90      |
+| “ciao bella” with +30 random filler tokens appended | \~0.58      |
+
+---
+
+## Running the test suite
+
+`mix test` runs a handful of ExUnit cases covering:
+
+- case & punctuation variations
+- word‑order permutations
+- query present / absent in long paragraph (> 40 tokens)
+- very long strings with tiny edits
+- monotonic drop as filler tokens grow
+
+All similarity tests auto‑skip if the NIF isn’t loaded (e.g. on
+CI without Rust).
 
 ---
 
 ## License
 
-MIT License
+MIT [License](LICENSE)

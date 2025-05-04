@@ -1,7 +1,7 @@
 defmodule Fuzler.MixProject do
   use Mix.Project
 
-  @version "0.1.0"
+  @version "0.1.1"
 
   def project do
     [
@@ -33,7 +33,7 @@ defmodule Fuzler.MixProject do
   end
 
   defp description() do
-    "Fuzler is a lightweight, reusable cache built on top of an ETS table and wrapped in a `GenServer`, with built-in fuzzy text search powered by a Rust NIF for high-performance similarity scoring."
+    "A tiny, Rust‑powered string‑similarity helper for Elixir."
   end
 
   defp package() do

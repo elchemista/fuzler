@@ -1,57 +1,79 @@
 defmodule FuzlerTest do
   use ExUnit.Case, async: true
-  @table :fuz_test
 
-  setup do
-    loader = fn -> [{"ciao", 1}, {"hola", 2}, {"hello", 3}] end
-    _pid = start_supervised!({Fuzler, table: @table, loader: loader})
-    :ok
+  @nif_loaded :erlang.function_exported(Fuzler, :nif_similarity_score, 2)
+
+  # helper for a tolerant equality check
+  defp assert_close(a, b, delta \\ 0.02) do
+    assert_in_delta a, b, delta
   end
 
-  test "get/2 fetches values" do
-    assert Fuzler.get("ciao") == 1
-    assert Fuzler.get("missing") == nil
+  @tag :similarity
+  test "identical strings (case & punctuation variants) score ~1.0" do
+    if @nif_loaded do
+      assert_close(Fuzler.similarity_score("Hello world!", "Hello world!"), 1.0)
+      assert_close(Fuzler.similarity_score("Hello world!", "hello world"), 1.0)
+      assert_close(Fuzler.similarity_score("Ciao, bella.", "ciao bella"), 1.0)
+    end
   end
 
-  test "insert/2 stores new entries" do
-    Fuzler.insert({"salut", 4})
-    # give the cast time to land
-    Process.sleep(20)
-    assert Fuzler.get("salut") == 4
+  @tag :similarity
+  test "order permutations yield similar score" do
+    if @nif_loaded do
+      s1 = Fuzler.similarity_score("bella ciao", "ciao bella")
+      s2 = Fuzler.similarity_score("bella ciao", "bella ciao")
+      assert_close(s1, s2)
+    end
   end
 
-  test "reload/1 wipes custom inserts and restores loader data" do
-    Fuzler.insert({"tmp", 99})
-    Process.sleep(20)
-    assert Fuzler.get("tmp") == 99
-    Fuzler.reload()
-    assert Fuzler.get("tmp") == nil
-    assert Fuzler.get("ciao") == 1
+  @tag :similarity
+  test "one‑word query inside vs absent from long text" do
+    if @nif_loaded do
+      paragraph =
+        Enum.join(
+          ~w(bella ciao come va oggi spero che tu stia bene mentre camminiamo insieme lungo la
+             strada e parliamo dei sogni che inseguiamo sotto il cielo azzurro d estate),
+          " "
+        )
+
+      present_score = Fuzler.similarity_score("ciao", paragraph)
+      absent_score = Fuzler.similarity_score("bonjour", paragraph)
+
+      assert present_score >= 0.5
+      assert absent_score <= 0.15
+    end
   end
 
-  test "stream/2 filters with predicate" do
-    keys =
-      Fuzler.stream(fn v -> v > 1 end)
-      |> Enum.map(&elem(&1, 0))
-      |> Enum.sort()
+  @tag :similarity
+  test "very long paragraphs with minor edit still score high" do
+    if @nif_loaded do
+      base =
+        Enum.join(
+          Enum.map(1..80, &"token#{&1}"),
+          " "
+        )
 
-    assert keys == ["hello", "hola"]
+      edited = String.replace(base, "token40", "token40X")
+
+      score = Fuzler.similarity_score(base, edited)
+      assert score >= 0.9
+    end
   end
 
-  test "text_search/3 returns top matches in descending score (or is skipped)" do
-    if :erlang.function_exported(Fuzler, :nif_similarity_score, 2) do
-      results = Fuzler.text_search("c", limit: 2)
+  @tag :similarity
+  test "similarity decreases as filler tokens are appended" do
+    if @nif_loaded do
+      base = "ciao bella"
 
-      # at least one result
-      assert [{k1, _v1, s1} | _] = results
-      assert k1 == "ciao"
-      assert s1 >= 0.10
+      scores =
+        for extra <- 0..4 do
+          filler = Enum.map(1..(extra * 10), &"x#{&1}") |> Enum.join(" ")
+          Fuzler.similarity_score(base, base <> " " <> filler)
+        end
 
-      # ensure scores are non-increasing
-      scores = Enum.map(results, &elem(&1, 2))
-      assert scores == Enum.sort(scores, :desc)
-    else
-      IO.puts("NIF not loaded: skipping similarity test")
+      assert Enum.sort(scores, :desc) == scores
+      assert hd(scores) == 1.0
+      assert List.last(scores) < 0.6
     end
   end
 end
