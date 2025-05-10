@@ -48,9 +48,9 @@ defmodule FuzlerTest do
   test "very long paragraphs with minor edit still score high" do
     if @nif_loaded do
       base =
-        Enum.join(
-          Enum.map(1..80, &"token#{&1}"),
-          " "
+        Enum.map_join(
+          " ",
+          Enum.map(1..80, &"token#{&1}")
         )
 
       edited = String.replace(base, "token40", "token40X")
@@ -67,7 +67,7 @@ defmodule FuzlerTest do
 
       scores =
         for extra <- 0..4 do
-          filler = Enum.map(1..(extra * 10), &"x#{&1}") |> Enum.join(" ")
+          filler = Enum.map_join(" ", 1..(extra * 10), &"x#{&1}")
           Fuzler.similarity_score(base, base <> " " <> filler)
         end
 

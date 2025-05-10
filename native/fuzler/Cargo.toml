@@ -12,6 +12,9 @@ crate-type = ["cdylib"]
 [dependencies]
 rustler = "0.36.1"
 triple_accel = "0.4.0"
+smallvec = "1.13"
+rustc-hash = "1.1"
+tracing = "0.1.41"
 
 [profile.release]
 codegen-units = 1

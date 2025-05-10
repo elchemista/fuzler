@@ -1,7 +1,7 @@
 defmodule Fuzler.MixProject do
   use Mix.Project
 
-  @version "0.1.1"
+  @version "0.1.2"
 
   def project do
     [
@@ -26,12 +26,6 @@ defmodule Fuzler.MixProject do
     ]
   end
 
-  def application do
-    [
-      extra_applications: []
-    ]
-  end
-
   defp description() do
     "A tiny, Rust‑powered string‑similarity helper for Elixir."
   end
@@ -39,7 +33,16 @@ defmodule Fuzler.MixProject do
   defp package() do
     [
       name: "fuzler",
-      files: ~w(mix.exs README.md lib native test LICENSE checksum-*.exs .formatter.exs),
+      files: ~w(
+             lib
+             mix.exs
+             README.md
+             LICENSE
+             checksum-Elixir.Fuzler.exs
+             native/fuzler/Cargo.toml
+             native/fuzler/src
+             priv/native/*.so
+      ),
       maintainers: ["Yuriy Zhar"],
       licenses: ["MIT"],
       links: %{"GitHub" => "https://github.com/elchemista/fuzler"}
