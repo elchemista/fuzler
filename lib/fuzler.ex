@@ -1,14 +1,14 @@
 defmodule Fuzler do
-  use Rustler, otp_app: :fuzler, crate: "fuzler"
+  # use Rustler, otp_app: :fuzler, crate: "fuzler"
 
-  # version = Mix.Project.config()[:version]
+  version = Mix.Project.config()[:version]
 
-  # use RustlerPrecompiled,
-  #   otp_app: :fuzler,
-  #   crate: "fuzler",
-  #   base_url: "https://github.com/elchemista/fuzler/releases/download/v#{version}",
-  #   force_build: System.get_env("RUSTLER_PRECOMPILATION_EXAMPLE_BUILD") in ["1", "true"],
-  #   version: version
+  use RustlerPrecompiled,
+    otp_app: :fuzler,
+    crate: "fuzler",
+    base_url: "https://github.com/elchemista/fuzler/releases/download/v#{version}",
+    force_build: System.get_env("RUSTLER_PRECOMPILATION_EXAMPLE_BUILD") in ["1", "true"],
+    version: version
 
   @doc """
   Returns a similarity score between `query` and `target`.
