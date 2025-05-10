@@ -15,7 +15,7 @@ defmodule Fuzler.MixProject do
       description: description(),
       package: package(),
       docs: [
-        master: "readme",
+        main: "readme",
         extras: [
           "README.md",
           "LICENSE"
