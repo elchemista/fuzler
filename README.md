@@ -30,7 +30,7 @@ Add to your `mix.exs`:
 ```elixir
 def deps do
   [
-    {:fuzler, "~> 0.1.1"}
+    {:fuzler, "~> 0.1.2"}
   ]
 end
 ```
