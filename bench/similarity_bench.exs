@@ -1,36 +1,32 @@
-# bench/similarity_bench.exs
+sentence = "fuzler compares lexical similarity between deterministic text samples"
+
+long_text =
+  1..2_000
+  |> Enum.map_join(" ", &"token#{rem(&1, 100)}")
+
 inputs = %{
-  "tiny - identical"      => {"aaa", "aaa"},
-  "tiny - off by one"     => {"aaa", "aab"},
-  "small - fuzzy"         => {"cia", "ciao bella"},
-  "medium - sentence"     => {
-    "elixirbench",
-    "benchmarking example elixirbench"
-  },
-  "large - random(1K)"    => {
-    :crypto.strong_rand_bytes(512) |> Base.encode16(),
-    :crypto.strong_rand_bytes(512) |> Base.encode16()
-  },
-  "xlarge - random(20K)"  => {
-    :crypto.strong_rand_bytes(10_000) |> Base.encode16(),
-    :crypto.strong_rand_bytes(10_000) |> Base.encode16()
-  },
-  "xxlarge - random(50K)" => {
-    :crypto.strong_rand_bytes(25_000) |> Base.encode16(),
-    :crypto.strong_rand_bytes(25_000) |> Base.encode16()
-  },
-  "huge - random(100K)"   => {
-    :crypto.strong_rand_bytes(50_000) |> Base.encode16(),
-    :crypto.strong_rand_bytes(50_000) |> Base.encode16()
-  }
+  "tiny / identical" => {"aaa", "aaa"},
+  "tiny / substitution" => {"aaa", "aab"},
+  "Unicode / canonical form" => {"café", "cafe\u0301"},
+  "Unicode / grapheme edit" => {"👩‍💻 develops in Elixir", "👩‍🔬 develops in Elixir"},
+  "sentence / contained phrase" => {"lexical similarity", sentence},
+  "sentence / unrelated" => {"pizza margherita", sentence},
+  "long / one edit" => {long_text, String.replace(long_text, "token50", "token51", global: false)}
 }
 
 Benchee.run(
   %{
-    "NIF: similarity_score/2"       => fn {q, t} -> Fuzler.similarity_score(q, t) end,
-    "Elixir: String.jaro_distance/2" => fn {q, t} -> String.jaro_distance(q, t) end
+    "Fuzler.similarity_score/2" => fn {query, target} ->
+      Fuzler.similarity_score(query, target)
+    end,
+    "String.jaro_distance/2" => fn {query, target} ->
+      String.jaro_distance(query, target)
+    end
   },
   inputs: inputs,
-  warmup: 2,
-  time: 5
+  warmup: 1,
+  time: 3,
+  memory_time: 1,
+  reduction_time: 1,
+  print: [fast_warning: false]
 )

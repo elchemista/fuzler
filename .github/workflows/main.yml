@@ -1,9 +1,13 @@
 name: Build precompiled NIFs
 
+permissions:
+  contents: write
+
 on:
   push:
     tags:
       - 'v*'
+  workflow_dispatch:
 
 jobs:
   build_release:
@@ -12,38 +16,51 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        nif: ["2.16", "2.15"]
+        nif: ["2.15"]
         job:
           - { target: arm-unknown-linux-gnueabihf , os: ubuntu-22.04 , use-cross: true }
           - { target: aarch64-unknown-linux-gnu   , os: ubuntu-22.04 , use-cross: true }
           - { target: aarch64-unknown-linux-musl  , os: ubuntu-22.04 , use-cross: true }
-          - { target: aarch64-apple-darwin        , os: macos-14      }
+          - { target: aarch64-apple-darwin        , os: macos-15      }
           - { target: riscv64gc-unknown-linux-gnu , os: ubuntu-22.04 , use-cross: true }
-          - { target: x86_64-apple-darwin         , os: macos-14      }
+          - { target: x86_64-apple-darwin         , os: macos-15-intel }
           - { target: x86_64-unknown-linux-gnu    , os: ubuntu-22.04  }
           - { target: x86_64-unknown-linux-musl   , os: ubuntu-22.04 , use-cross: true }
-          - { target: x86_64-pc-windows-gnu       , os: windows-2019  }
-          - { target: x86_64-pc-windows-msvc      , os: windows-2019  }
+          - { target: x86_64-pc-windows-gnu       , os: windows-2022  }
+          - { target: x86_64-pc-windows-msvc      , os: windows-2022  }
 
     steps:
       - name: Checkout source code
-        uses: actions/checkout@v3
+        uses: actions/checkout@v7.0.1
 
       - name: Extract project version
         shell: bash
         run: |
-          # Get the project version from mix.exs
-          echo "PROJECT_VERSION=$(sed -n 's/^  @version "\(.*\)"/\1/p' mix.exs | head -n1)" >> $GITHUB_ENV
+          echo "PROJECT_VERSION=$(sed -n 's/^  @version "\(.*\)"/\1/p' mix.exs | head -n1)" >> "${GITHUB_ENV}"
+
+      - name: Verify release version metadata
+        shell: bash
+        run: |
+          cargo_version=$(sed -n '/^\[package\]/,/^\[/s/^version = "\(.*\)"/\1/p' native/fuzler/Cargo.toml | head -n1)
+          test "${PROJECT_VERSION}" = "${cargo_version}"
+
+      - name: Verify tag matches project version
+        if: github.ref_type == 'tag'
+        shell: bash
+        run: |
+          if [ "v${PROJECT_VERSION}" != "${GITHUB_REF_NAME}" ]; then
+            echo "Tag ${GITHUB_REF_NAME} does not match mix.exs version v${PROJECT_VERSION}" >&2
+            exit 1
+          fi
 
       - name: Install Rust toolchain
         uses: dtolnay/rust-toolchain@stable
         with:
-          toolchain: stable
-          target: ${{ matrix.job.target }}
+          targets: ${{ matrix.job.target }}
 
       - name: Build the project
         id: build-crate
-        uses: philss/rustler-precompiled-action@v1.0.1
+        uses: philss/rustler-precompiled-action@v1.1.5
         with:
           project-name: fuzler
           project-version: ${{ env.PROJECT_VERSION }}
@@ -51,17 +68,76 @@ jobs:
           nif-version: ${{ matrix.nif }}
           use-cross: ${{ matrix.job.use-cross }}
           project-dir: "native/fuzler"
-          features: "parallel"
 
       - name: Artifact upload
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7.0.1
         with:
           name: ${{ steps.build-crate.outputs.file-name }}
           path: ${{ steps.build-crate.outputs.file-path }}
+          if-no-files-found: error
 
-      - name: Publish archives and packages
-        uses: softprops/action-gh-release@v1
+  publish_release:
+    name: Publish release archives and checksum
+    runs-on: ubuntu-22.04
+    needs: build_release
+    if: github.ref_type == 'tag'
+
+    steps:
+      - name: Checkout source code
+        uses: actions/checkout@v7.0.1
+
+      - name: Extract project version
+        shell: bash
+        run: |
+          echo "PROJECT_VERSION=$(sed -n 's/^  @version "\(.*\)"/\1/p' mix.exs | head -n1)" >> "${GITHUB_ENV}"
+
+      - name: Download build artifacts
+        uses: actions/download-artifact@v8.0.1
         with:
+          path: release-artifacts
+          merge-multiple: true
+
+      - name: Generate Rustler checksum file
+        shell: bash
+        run: |
+          checksum_file="checksum-Elixir.Fuzler.Native.exs"
+          mismatched=$(find release-artifacts -maxdepth 1 -type f ! -name "*-v${PROJECT_VERSION}-*" -print -quit)
+          if [ -n "${mismatched}" ]; then
+            echo "Artifact version does not match v${PROJECT_VERSION}: ${mismatched}" >&2
+            exit 1
+          fi
+          {
+            printf '%%{\n'
+            find release-artifacts -maxdepth 1 -type f -printf '%f\n' | sort | while read -r filename; do
+              checksum=$(sha256sum "release-artifacts/${filename}" | cut -d' ' -f1)
+              printf '  "%s" => "sha256:%s",\n' "${filename}" "${checksum}"
+            done
+            printf '}\n'
+          } > "${checksum_file}"
+
+      - name: Verify release archive set
+        shell: bash
+        run: |
+          archive_count=$(find release-artifacts -maxdepth 1 -type f -name '*.tar.gz' | wc -l)
+          test "${archive_count}" -eq 10
+          find release-artifacts -maxdepth 1 -type f -name '*.tar.gz' -exec tar -tzf {} \; > /dev/null
+
+      - name: Verify publish metadata
+        run: bash scripts/verify_release.sh
+
+      - name: Upload release checksum
+        uses: actions/upload-artifact@v7.0.1
+        with:
+          name: rustler-checksum
+          path: checksum-Elixir.Fuzler.Native.exs
+          if-no-files-found: error
+
+      - name: Publish archives and checksum
+        uses: softprops/action-gh-release@v3.0.2
+        with:
+          tag_name: v${{ env.PROJECT_VERSION }}
+          overwrite_files: true
+          fail_on_unmatched_files: true
           files: |
-            ${{ steps.build-crate.outputs.file-path }}
-        if: startsWith(github.ref, 'refs/tags/')
+            release-artifacts/*
+            checksum-Elixir.Fuzler.Native.exs

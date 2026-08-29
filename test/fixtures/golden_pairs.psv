@@ -1,0 +1,41 @@
+label|relevant|left|right|min|max
+exact name|true|Mario Rossi|mario rossi|1.0|1.0
+punctuated name|true|Jean-Luc Picard|jean luc picard|1.0|1.0
+accented name|true|JOSÉ GARCÍA|josé garcía|1.0|1.0
+exact city|true|New-York|new york|1.0|1.0
+accented city|true|SÃO PAULO|são paulo|1.0|1.0
+city punctuation|true|St. Louis|st louis|1.0|1.0
+phrase punctuation|true|Buongiorno, mondo!|buongiorno mondo|1.0|1.0
+structured code|true|ABC-123-XYZ|abc 123 xyz|1.0|1.0
+compatibility Unicode|true|ＦＵＺＬＥＲ|fuzler|1.0|1.0
+emoji separator|true|hello 👋 world|hello world|1.0|1.0
+single substitution|true|mario|marco|0.79|0.81
+single deletion name|true|giulia|giula|0.82|0.84
+transposed name|true|francesca|francseca|0.77|0.79
+long transposition|true|alessandro|alessanrdo|0.79|0.81
+single deletion city|true|amsterdam|amsterdm|0.88|0.90
+city typo|true|barcelona|barcelon|0.88|0.90
+short city typo|true|lisbon|lisbn|0.82|0.84
+substitution city|true|florence|florance|0.87|0.89
+transposed city|true|bologna|bolonga|0.70|0.72
+insertion city|true|london|londom|0.82|0.84
+contained word|true|needle|some text with needle inside|0.59|0.61
+contained name|true|Mario Rossi|ieri ho incontrato Mario Rossi alla stazione|0.63|0.65
+contained city|true|New York|il prossimo volo diretto arriva a New York domani|0.61|0.63
+contained greeting|true|good morning|she smiled and said good morning to everyone|0.63|0.65
+contained appointment|true|domani alle nove|la riunione è confermata per domani alle nove in ufficio|0.64|0.66
+contained product|true|abc 123 xyz|search the catalogue for product abc 123 xyz today|0.67|0.69
+contained food|true|pizza margherita|per cena abbiamo ordinato una pizza margherita grande|0.63|0.65
+contained support phrase|true|password dimenticata|seleziona il collegamento password dimenticata nella pagina|0.63|0.65
+contained error phrase|true|errore di connessione|il registro mostra un errore di connessione intermittente|0.68|0.70
+contained language phrase|true|Elixir and Rust|this library combines Elixir and Rust for speed|0.68|0.70
+person vs science|false|Mario Rossi|quantum particle accelerator|0.0|0.4
+person vs weather|false|Anna Bianchi|tropical thunderstorm warning|0.0|0.4
+person vs cooking|false|Luca Ferrari|roasted pumpkin soup|0.0|0.4
+city vs astronomy|false|São Paulo|distant spiral galaxy|0.0|0.4
+city vs software|false|Cape Town|distributed database cluster|0.0|0.4
+greeting vs database|false|buongiorno a tutti|postgres replication slot|0.0|0.4
+appointment vs music|false|domani alle nove|electric guitar amplifier|0.0|0.4
+food vs networking|false|pizza margherita|ethernet routing protocol|0.0|0.4
+support vs gardening|false|password dimenticata|organic tomato seedlings|0.0|0.4
+programming vs dance|false|Elixir and Rust|classical ballet performance|0.0|0.4

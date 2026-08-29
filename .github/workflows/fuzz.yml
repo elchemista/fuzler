@@ -1,0 +1,35 @@
+name: Fuzz
+
+on:
+  push:
+    branches:
+      - "**"
+  pull_request:
+  schedule:
+    - cron: "17 3 * * 1"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: fuzz-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  unicode:
+    name: Unicode and scoring invariants
+    runs-on: ubuntu-24.04
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v7.0.1
+
+      - name: Set up nightly Rust
+        uses: dtolnay/rust-toolchain@nightly
+
+      - name: Install cargo-fuzz
+        run: cargo install cargo-fuzz --version 0.13.2 --locked
+
+      - name: Run libFuzzer
+        working-directory: native/fuzler
+        run: cargo fuzz run similarity -- -max_total_time=30 -rss_limit_mb=2048
