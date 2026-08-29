@@ -1,20 +1,42 @@
-# NIF for Fuzler
+# Fuzler native engine
 
-## To build the NIF module:
+This crate implements the Rust NIF used by the Elixir `fuzler` package. It is
+not published as an independent Rust API.
 
-- Your NIF will now build along with your project.
+## Responsibilities
 
-## To load the NIF:
+- Unicode NFC/NFKC normalisation and optional diacritic removal
+- token-multiset Jaccard similarity
+- ASCII SIMD Levenshtein and bounded grapheme-aware Unicode Levenshtein
+- bounded partial-window matching
+- resource-limit enforcement
+- detailed and batch scoring NIFs
 
-```elixir
-defmodule Fuzler do
-  use Rustler, otp_app: :fuzler, crate: "fuzler"
+All exported NIFs use Rustler's dirty CPU scheduler. Panics are caught at the
+NIF boundary and converted into an internal error for the Elixir wrapper.
 
-  # When your NIF is loaded, it will override this function.
-  def add(_a, _b), do: :erlang.nif_error(:nif_not_loaded)
-end
+## Development
+
+Run native formatting, unit/property tests, and linting from the repository
+root:
+
+```console
+cargo fmt --manifest-path native/fuzler/Cargo.toml --check
+cargo test --manifest-path native/fuzler/Cargo.toml --locked --all-targets
+cargo clippy --manifest-path native/fuzler/Cargo.toml --locked --all-targets --all-features -- -D warnings
 ```
 
-## Examples
+The minimum supported Rust version is recorded in `Cargo.toml` and checked by
+CI. Release archives are built by `.github/workflows/main.yml`.
 
-[This](https://github.com/rusterlium/NifIo) is a complete example of a NIF written in Rust.
+## Fuzzing
+
+Install `cargo-fuzz`, then run the target with a nightly toolchain:
+
+```console
+cd native/fuzler
+cargo +nightly fuzz run similarity
+```
+
+The target checks arbitrary string pairs for panics, symmetry, determinism,
+and score bounds without requiring a running BEAM VM.

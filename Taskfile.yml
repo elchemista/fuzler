@@ -10,12 +10,12 @@ tasks:
     env:
       RUSTLER_PRECOMPILATION_EXAMPLE_BUILD: 1
     cmds:
-      -  RUSTFLAGS="-C target-cpu=native" mix compile
+      - RUSTFLAGS="-C target-cpu=native" mix compile --force
 
   compile-using-precompiled-binaries:
     desc: Compile sources (without Rust)
     cmds:
-      - mix compile
+      - mix compile --force
 
   console:
     desc: Open console
@@ -26,42 +26,99 @@ tasks:
         ignore_error: true
 
   test:
-    desc: Run tests (with Rust)
+    desc: Run ExUnit, doctests, and coverage (with Rust)
     env:
       RUSTLER_PRECOMPILATION_EXAMPLE_BUILD: 1
     cmds:
-      - mix test --trace
+      - mix test --force --cover --trace
 
   test-using-precompiled-binaries:
-    desc: Run tests (without Rust)
+    desc: Run ExUnit, doctests, and coverage (without Rust)
     cmds:
-      - mix test --trace
+      - mix test --force --cover --trace
 
   check:
-    desc: Check codes
+    desc: Run the complete local quality gate
     cmds:
+      - task: format
+      - task: compile
+      - task: test
+      - task: credo
       - task: dialyzer
+      - task: hex-audit
+      - task: docs
+      - task: hex-build
+      - task: benchmark-check
+      - task: package-smoke
+      - task: rust-fmt
+      - task: rust-test
       - task: clippy
+
+  format:
+    desc: Check Elixir formatting
+    cmd: mix format --check-formatted
+
+  credo:
+    desc: Run strict Credo checks
+    cmd: mix credo --strict
 
   dialyzer:
     desc: Run dialyzer
     cmd: mix dialyzer
 
-  clippy:
-    desc: Run clippy
+  hex-audit:
+    desc: Audit Hex dependencies
+    cmd: mix hex.audit
+
+  docs:
+    desc: Build HexDocs with warnings as errors
+    cmd: mix docs --warnings-as-errors
+
+  hex-build:
+    desc: Verify the Hex package contents
+    cmd: mix hex.build
+
+  rust-fmt:
+    desc: Check Rust formatting
     dir: "native/{{.PROJECT_DIR_NAME}}"
-    cmd: cargo clippy
+    cmd: cargo fmt --check
+
+  rust-test:
+    desc: Run native Rust tests
+    dir: "native/{{.PROJECT_DIR_NAME}}"
+    cmd: cargo test --locked --all-targets
+
+  benchmark:
+    desc: Run deterministic comparative benchmarks
+    env:
+      RUSTLER_PRECOMPILATION_EXAMPLE_BUILD: 1
+    cmd: mix run bench/similarity_bench.exs
+
+  benchmark-check:
+    desc: Check deterministic performance budgets
+    env:
+      RUSTLER_PRECOMPILATION_EXAMPLE_BUILD: 1
+    cmd: mix run bench/regression_check.exs
+
+  package-smoke:
+    desc: Build and test the package in an isolated consumer project
+    cmd: bash scripts/package_smoke.sh
+
+  fuzz:
+    desc: Fuzz arbitrary Unicode pairs with libFuzzer
+    dir: "native/{{.PROJECT_DIR_NAME}}"
+    cmd: cargo +nightly fuzz run similarity
+
+  clippy:
+    desc: Run Clippy with warnings as errors
+    dir: "native/{{.PROJECT_DIR_NAME}}"
+    cmd: cargo clippy --locked --all-targets --all-features -- -D warnings
 
   clean:
     desc: Clean up
     cmds:
       - mix clean
-      - rm -f priv/native/*.so
-      - "rm -rf native/{{.PROJECT_DIR_NAME}}/target/*/build"
-
-  # benchmark:
-  #   desc: Run benchmark
-  #   cmd: mix run benchmark/benchmark.exs
+      - cargo clean --manifest-path native/{{.PROJECT_DIR_NAME}}/Cargo.toml
 
   rustler-precompiled-download:
     desc: Download precompiled files info
@@ -74,7 +131,8 @@ tasks:
     desc: Publish to hex.pm
     prompt: Are you sure to publish?
     cmds:
-      - "rm -rf native/{{.PROJECT_DIR_NAME}}/target"
+      - bash scripts/verify_release.sh
+      - cargo clean --manifest-path native/{{.PROJECT_DIR_NAME}}/Cargo.toml
       - mix hex.publish
 
   default:
